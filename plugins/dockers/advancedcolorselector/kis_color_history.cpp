@@ -3,6 +3,7 @@
  *
  *  SPDX-License-Identifier: LGPL-2.0-or-later
  */
+#include <kis_icon_utils.h>
 
 #include "kis_color_history.h"
 #include "kis_canvas2.h"
@@ -17,6 +18,7 @@
 KisColorHistory::KisColorHistory(QWidget *parent)
     : KisColorPatches("lastUsedColors", parent)
     , m_resourceProvider(0)
+
 {
 }
 
@@ -37,7 +39,6 @@ void KisColorHistory::setCanvas(KisCanvas2 *canvas)
     }
 
     m_resourceProvider = canvas->imageView()->resourceProvider();
-
 
     connect(canvas->imageView()->resourceProvider(), SIGNAL(sigFGColorUsed(KoColor)),
             this, SLOT(addColorToHistory(KoColor)), Qt::UniqueConnection);
@@ -64,6 +65,15 @@ void KisColorHistory::addColorToHistory(const KoColor& color)
     if (m_colorHistory.size()>200)  {
         m_colorHistory.removeLast();
     }
+
+    setColors(m_colorHistory);
+}
+
+void KisColorHistory::clearColorHistory() {
+//    KoColor lastColor = m_colorHistory.first(); //List is reversed, so last color used is first in the list
+
+    m_colorHistory.clear();
+//    m_colorHistory.prepend(lastColor);
 
     setColors(m_colorHistory);
 }

@@ -7,6 +7,7 @@
 #ifndef KIS_COLOR_HISTORY_H
 #define KIS_COLOR_HISTORY_H
 
+#include <QToolButton>
 #include "kis_color_patches.h"
 
 
@@ -25,7 +26,7 @@ protected:
 
 public Q_SLOTS:
     void addColorToHistory(const KoColor& color);
-
+    void clearColorHistory();
 private:
     QList<KoColor> m_colorHistory;
     KisCanvasResourceProvider  *m_resourceProvider; // to disconnect...

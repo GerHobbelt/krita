@@ -46,6 +46,7 @@ KisColorSelectorNgDockerWidget::KisColorSelectorNgDockerWidget(QWidget *parent) 
     m_verticalColorPatchesLayout(0),
     m_horizontalColorPatchesLayout(0),
     m_fallbackSettingsButton(new QToolButton(this)),
+    m_clearColorHistoryButton(new QToolButton(this)),
     m_canvas(0)
 {
     setAutoFillBackground(true);
@@ -64,6 +65,11 @@ KisColorSelectorNgDockerWidget::KisColorSelectorNgDockerWidget(QWidget *parent) 
     m_fallbackSettingsButton->setIconSize(QSize(22,22));
     m_fallbackSettingsButton->setAutoRaise(true);
     m_fallbackSettingsButton->hide();
+
+    //Clear color history button
+    m_clearColorHistoryButton->setIcon(KisIconUtils::loadIcon("edit-clear"));
+    m_clearColorHistoryButton->setIconSize(QSize(22, 22));
+    m_clearColorHistoryButton->setAutoRaise(true);
 
     //layout
     m_widgetLayout = new QHBoxLayout(this);
@@ -100,9 +106,12 @@ KisColorSelectorNgDockerWidget::KisColorSelectorNgDockerWidget(QWidget *parent) 
     m_widgetLayout->addLayout(m_mainLayout);
     m_widgetLayout->addLayout(m_sidebarLayout);
 
+    m_sidebarLayout->addWidget(m_clearColorHistoryButton);
+
     updateLayout();
 
     connect(m_colorSelectorContainer, SIGNAL(openSettings()), this, SLOT(openSettings()));
+    connect(m_clearColorHistoryButton, SIGNAL(clicked()), m_colorHistoryWidget, SLOT(clearColorHistory()));
 
     //emit settingsChanged() if the settings are changed in krita preferences
     KisPreferenceSetRegistry *preferenceSetRegistry = KisPreferenceSetRegistry::instance();
