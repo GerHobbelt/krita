@@ -34,3 +34,4 @@ build_dir
 .flatpak-builder
 .cache
 cmake-build-debug
+.vscode

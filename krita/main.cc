@@ -44,6 +44,8 @@
 #include "data/splash/splash_holidays.xpm"
 #include "data/splash/splash_screen_x2.xpm"
 #include "data/splash/splash_holidays_x2.xpm"
+#include "data/splash/splash_other.xpm"
+#include "data/splash/splash_other_x2.xpm"
 #include "KisDocument.h"
 #include "kis_splash_screen.h"
 #include "KisPart.h"
@@ -532,6 +534,8 @@ extern "C" int main(int argc, char **argv)
 #endif
     app.installEventFilter(KisQtWidgetsTweaker::instance());
 
+    srand(time(NULL));
+
     if (!args.noSplash()) {
         // then create the pixmap from an xpm: we cannot get the
         // location of our datadir before we've started our components,
@@ -540,7 +544,12 @@ extern "C" int main(int argc, char **argv)
         QWidget *splash = 0;
         if (currentDate > QDate(currentDate.year(), 12, 4) ||
                 currentDate < QDate(currentDate.year(), 1, 9)) {
-            splash = new KisSplashScreen(app.applicationVersion(), QPixmap(splash_holidays_xpm), QPixmap(splash_holidays_x2_xpm));
+
+            if((rand() % 100) % 2 == 0)
+                splash = new KisSplashScreen(app.applicationVersion(), QPixmap(splash_other_xpm), QPixmap(splash_other_x2_xpm));
+            else
+                splash = new KisSplashScreen(app.applicationVersion(), QPixmap(splash_holidays_xpm), QPixmap(splash_holidays_x2_xpm));
+
         }
         else {
             splash = new KisSplashScreen(app.applicationVersion(), QPixmap(splash_screen_xpm), QPixmap(splash_screen_x2_xpm));

@@ -67,7 +67,7 @@ KisColorSelectorNgDockerWidget::KisColorSelectorNgDockerWidget(QWidget *parent) 
     m_fallbackSettingsButton->hide();
 
     //Clear color history button
-    m_clearColorHistoryButton->setIcon(KisIconUtils::loadIcon("edit-clear"));
+    m_clearColorHistoryButton->setIcon(KisIconUtils::loadIcon("dialog-cancel"));
     m_clearColorHistoryButton->setIconSize(QSize(22, 22));
     m_clearColorHistoryButton->setAutoRaise(true);
 

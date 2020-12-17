@@ -89,6 +89,55 @@ DigitalMixerDock::DigitalMixerDock( )
         connect(mixer.targetColor, SIGNAL(triggered(KoColorPatch*)), signalMapperTargetColor, SLOT(map()));
         signalMapperTargetColor->setMapping(mixer.targetColor, i);
     }
+
+    //Gradient Mixer
+    KisSignalMapper* signalMapperGradientStartColor = new KisSignalMapper(this);
+    connect(signalMapperGradientStartColor, SIGNAL(mapped(int)), SLOT(gradientStartColorChanged(int)));
+
+    KisSignalMapper* signalMapperGradientColorSlider = new KisSignalMapper(this);
+    connect(signalMapperGradientColorSlider, SIGNAL(mapped(int)), SLOT(gradientColorSliderChanged(int)));
+
+    KisSignalMapper* signalMapperGradientEndColor = new KisSignalMapper(this);
+    connect(signalMapperGradientEndColor, SIGNAL(mapped(int)), SLOT(gradientEndColorChanged(int)));
+
+    KisSignalMapper* signalMapperGradientTargetColor = new KisSignalMapper(this);
+    connect(signalMapperGradientTargetColor, SIGNAL(mapped(int)), SLOT(gradientTargetColorChanged(int)));
+
+
+    gradient_mixer.targetColor = new DigitalMixerPatch(this); 
+    gradient_mixer.targetColor->setFixedSize(32,32);
+    layout->addWidget(gradient_mixer.targetColor, 3, 0);
+
+    gradient_mixer.startColor = new KisColorButton(this);
+    gradient_mixer.startColor->setColor(KoColor(Qt::black, sRGB));
+    gradient_mixer.startColor->setFixedWidth(22); 
+    layout->addWidget(gradient_mixer.startColor, 3, 1);
+
+    gradient_mixer.targetSlider = new KoColorSlider(Qt::Horizontal, this);
+    gradient_mixer.targetSlider->setFixedHeight(22);
+    // gradient_mixer.targetSlider->setMinimumWidth(20);
+    // gradient_mixer.targetSlider->setMaximumWidth(120);
+    // gradient_mixer.targetSlider->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    layout->addWidget(gradient_mixer.targetSlider, 3, 2, 1, 4);
+    
+    gradient_mixer.endColor = new KisColorButton(this);
+    gradient_mixer.endColor->setColor(KoColor(Qt::white, sRGB));
+    gradient_mixer.endColor->setFixedWidth(22); 
+    layout->addWidget(gradient_mixer.endColor, 3, 6);
+    
+    connect(gradient_mixer.startColor, SIGNAL(changed(KoColor)), signalMapperGradientStartColor, SLOT(map()));
+    signalMapperGradientStartColor->setMapping(gradient_mixer.startColor, 6);
+    
+    connect(gradient_mixer.targetSlider, SIGNAL(valueChanged(int)), signalMapperGradientColorSlider, SLOT(map()));
+    signalMapperGradientColorSlider->setMapping(gradient_mixer.targetSlider, 6); 
+    gradient_mixer.targetSlider->setValue(125);
+    
+    connect(gradient_mixer.endColor, SIGNAL(changed(KoColor)), signalMapperGradientEndColor, SLOT(map()));
+    signalMapperGradientEndColor->setMapping(gradient_mixer.endColor, 6);
+    
+    connect(gradient_mixer.targetColor, SIGNAL(triggered(KoColorPatch*)), signalMapperGradientTargetColor, SLOT(map()));
+    signalMapperGradientTargetColor->setMapping(gradient_mixer.targetColor, 6);
+
     setCurrentColor(KoColor(Qt::black, KoColorSpaceRegistry::instance()->rgb8()));
     setWidget( widget );
 }
@@ -111,6 +160,36 @@ void DigitalMixerDock::setCanvas(KoCanvasBase * canvas)
         setCurrentColor(m_canvas->resourceManager()->foregroundColor());
         m_tellCanvas=true;
     }
+}
+
+void DigitalMixerDock::gradientStartColorChanged(int id)
+{
+    KoColor color = gradient_mixer.startColor->color();
+    KoColor end_color = gradient_mixer.endColor->color();
+    color.convertTo(end_color.colorSpace());
+    gradient_mixer.targetSlider->setColors(color, end_color);
+
+    gradientColorSliderChanged(id);
+}
+
+void DigitalMixerDock::gradientColorSliderChanged(int id) 
+{
+    gradient_mixer.targetColor->setColor(gradient_mixer.targetSlider->currentColor());
+} 
+
+void DigitalMixerDock::gradientEndColorChanged(int id) 
+{
+    KoColor color = gradient_mixer.endColor->color();
+    KoColor start_color = gradient_mixer.startColor->color();
+    color.convertTo(start_color.colorSpace());
+    gradient_mixer.targetSlider->setColors(start_color, color);
+
+    gradientColorSliderChanged(id);
+}
+
+void DigitalMixerDock::gradientTargetColorChanged(int id) 
+{ 
+    setCurrentColor(gradient_mixer.targetColor->color());
 }
 
 void DigitalMixerDock::popupColorChanged(int i)

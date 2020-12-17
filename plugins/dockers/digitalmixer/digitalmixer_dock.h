@@ -35,16 +35,32 @@ private Q_SLOTS:
     void popupColorChanged(int i);
     void colorSliderChanged(int i);
     void targetColorChanged(int);
+
+    void gradientStartColorChanged(int);
+    void gradientColorSliderChanged(int);
+    void gradientEndColorChanged(int);
+    void gradientTargetColorChanged(int);
 private:
     QPointer<KoCanvasBase> m_canvas;
     KoColor m_currentColor;
     KoColorPatch* m_currentColorPatch;
+
     struct Mixer {
       KoColorPatch* targetColor;
       KoColorSlider* targetSlider;
       KisColorButton* actionColor;
     };
+
+    struct GradientMixer {
+        KoColorPatch* targetColor; 
+        KisColorButton* startColor; 
+        KoColorSlider* targetSlider;
+        KisColorButton* endColor;
+    };
+
     QList<Mixer> m_mixers;
+    GradientMixer gradient_mixer;
+
     bool m_tellCanvas;
 };
 
