@@ -1,5 +1,5 @@
 /* XPM */
-static char *splash_other_x2_xpm[]={
+static char const *splash_other_x2_xpm[]={
 "504 290 79391 3",
 "oTL c #000001",
 "nKX c #000002",

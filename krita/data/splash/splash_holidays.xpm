@@ -1,5 +1,5 @@
 /* XPM */
-static char *splash_holidays_xpm[]={
+static char const *splash_holidays_xpm[]={
 "504 290 83004 3",
 "bAz c #1c1d1f",
 "bFI c #1d1d21",
