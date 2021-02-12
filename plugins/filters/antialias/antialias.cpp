@@ -52,11 +52,10 @@ KritaAntiAlias::~KritaAntiAlias()
 
 KisFilterFXAA::KisFilterFXAA() : KisColorTransformationFilter(id(), FiltersCategoryInDevelopmentId, i18n("&AntiAlias"))
 {
-    setShortcut(QKeySequence(Qt::CTRL + Qt::Key_I));
     setColorSpaceIndependence(FULLY_INDEPENDENT);
-    setSupportsPainting(true);
+    setSupportsPainting(false); // TODO: find out what this means
     setShowConfigurationWidget(false);
-    setSupportsLevelOfDetail(true);
+    setSupportsLevelOfDetail(false); // TODO: find out what this means
 }
 
 KoColorTransformation* KisFilterFXAA::createTransformation(const KoColorSpace* cs, const KisFilterConfigurationSP config) const
