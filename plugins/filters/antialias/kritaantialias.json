@@ -1,0 +1,9 @@
+{
+    "Id": "AntiAlias Filter",
+    "Type": "Service",
+    "X-KDE-Library": "kritaantialias",
+    "X-KDE-ServiceTypes": [
+        "Krita/Filter"
+    ],
+    "X-Krita-Version": "28"
+}

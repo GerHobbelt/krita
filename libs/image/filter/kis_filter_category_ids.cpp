@@ -30,3 +30,4 @@ const KoID FiltersCategoryEmbossId("emboss_filters", ki18nc("The category of emb
 const KoID FiltersCategoryEnhanceId("enhance_filters", ki18nc("The category of enhancement filters, like sharpen. Verb.", "Enhance"));
 const KoID FiltersCategoryMapId("map_filters", ki18nc("The category of mapping filters, like bump map or gradient filter map. Verb.", "Map"));
 const KoID FiltersCategoryOtherId("other_filters", ki18nc("The category of filters that do not fit in a category. Noun.", "Other"));
+const KoID FiltersCategoryInDevelopmentId("in_development_filters", ki18nc("Filters in active development. Noun.", "In Development"));

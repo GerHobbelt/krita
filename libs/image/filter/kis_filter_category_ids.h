@@ -33,5 +33,6 @@ extern const KoID KRITAIMAGE_EXPORT FiltersCategoryEmbossId;
 extern const KoID KRITAIMAGE_EXPORT FiltersCategoryEnhanceId;
 extern const KoID KRITAIMAGE_EXPORT FiltersCategoryMapId;
 extern const KoID KRITAIMAGE_EXPORT FiltersCategoryOtherId;
+extern const KoID KRITAIMAGE_EXPORT FiltersCategoryInDevelopmentId;
 
 #endif // _KIS_FILTER_CATEGORY_IDS_H_

@@ -1570,6 +1570,16 @@
       <isCheckable>false</isCheckable>
       <statusTip></statusTip>
     </Action>
+    <Action name="in_development_filters">
+      <icon></icon>
+      <text>In Development</text>
+      <whatsThis></whatsThis>
+      <toolTip>In Development</toolTip>
+      <iconText>In Development</iconText>
+      <shortcut></shortcut>
+      <isCheckable>false</isCheckable>
+      <statusTip></statusTip>
+    </Action>
     <Action name="QMic">
       <icon>gmic</icon>
       <text>Start G'MIC-Qt</text>

@@ -335,6 +335,7 @@ xsi:schemaLocation="http://www.kde.org/standards/kxmlgui/1.0  http://www.kde.org
       <Action name="map_filters"/>
       <Action name="nonphotorealistic_filters"/>
       <Action name="other_filters"/>
+      <Action name="in_development_filters"/>
       <Separator/>
       <Action name="QMic"/>
       <Action name="QMicAgain"/>
