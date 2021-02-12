@@ -42,7 +42,7 @@ public:
     KoColorTransformation* createTransformation(const KoColorSpace* cs, const KisFilterConfigurationSP config) const override;
 
     static inline KoID id() {
-        return KoID("invert", i18n("Invert"));
+        return KoID("antialias", i18n("AntiAlias"));
     }
 
     bool needsTransparentPixels(const KisFilterConfigurationSP config, const KoColorSpace *cs) const override;
