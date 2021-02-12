@@ -21,31 +21,41 @@
 #ifndef ANTI_ALIAS_H
 #define ANTI_ALIAS_H
 
-#include <QObject>
-#include <QVariant>
-#include "filter/kis_color_transformation_filter.h"
+// #include <QObject>
+// #include <QVariant>
+// #include "filter/kis_color_transformation_filter.h"
 
-class KritaAntiAlias : public QObject
+
+#include "filter/kis_filter.h"
+
+#include <Eigen/Core>
+
+class KritaAntiAliasFilter : public QObject
 {
     Q_OBJECT
 public:
-    KritaAntiAlias(QObject *parent, const QVariantList &);
-    ~KritaAntiAlias() override;
+    KritaAntiAliasFilter(QObject *parent, const QVariantList &);
+    ~KritaAntiAliasFilter() override;
 };
 
-class KisFilterFXAA : public KisColorTransformationFilter
+class KisFXAAFilter : public KisFilter
 {
 public:
-    KisFilterFXAA();
-public:
-
-    KoColorTransformation* createTransformation(const KoColorSpace* cs, const KisFilterConfigurationSP config) const override;
-
+    KisFXAAFilter();
+    void processImpl(KisPaintDeviceSP device,
+                     const QRect& rect,
+                     const KisFilterConfigurationSP config,
+                     KoUpdater* progressUpdater
+                     ) const override;
     static inline KoID id() {
         return KoID("antialias", i18n("AntiAlias"));
     }
 
-    bool needsTransparentPixels(const KisFilterConfigurationSP config, const KoColorSpace *cs) const override;
+    KisFilterConfigurationSP defaultConfiguration() const override;
+public:
+    KisConfigWidget * createConfigurationWidget(QWidget* parent, const KisPaintDeviceSP dev, bool useForMasks) const override;
+    QRect neededRect(const QRect & rect, const KisFilterConfigurationSP _config, int lod) const override;
+    QRect changedRect(const QRect & rect, const KisFilterConfigurationSP _config, int lod) const override;
 };
 
-#endif
+#endif // ANTI_ALIAS_H

@@ -18,56 +18,133 @@
  */
 
 #include "antialias.h"
-#include <stdlib.h>
-#include <vector>
+#include <kis_fxaa_kernel.h>
 
-#include <QPoint>
-#include <QTime>
+#include <KoColorSpaceRegistry.h>
+#include <KoColorModelStandardIds.h>
 
-#include <klocalizedstring.h>
+#include <filter/kis_filter_category_ids.h>
+#include <filter/kis_filter_configuration.h>
+#include <kis_selection.h>
+#include <kis_paint_device.h>
+#include <kis_processing_information.h>
+#include "kis_lod_transform.h"
 
-#include <kis_debug.h>
 #include <kpluginfactory.h>
 
-#include <kis_processing_information.h>
-#include <kis_types.h>
-#include <kis_selection.h>
-#include <kis_layer.h>
-#include <filter/kis_filter_category_ids.h>
+#include <klocalizedstring.h>
 #include <filter/kis_filter_registry.h>
-#include <kis_global.h>
-#include "KoColorModelStandardIds.h"
 
-K_PLUGIN_FACTORY_WITH_JSON(KritaAntiAliasFactory, "kritaantialias.json", registerPlugin<KritaAntiAlias>();)
+K_PLUGIN_FACTORY_WITH_JSON(KritaAntiAliasFactory, "kritaantialias.json", registerPlugin<KritaAntiAliasFilter>();)
 
-KritaAntiAlias::KritaAntiAlias(QObject *parent, const QVariantList &)
-        : QObject(parent)
+KritaAntiAliasFilter::KritaAntiAliasFilter(QObject *parent, const QVariantList &)
+    : QObject(parent)
 {
-    KisFilterRegistry::instance()->add(KisFilterSP(new KisFilterFXAA()));
+    KisFilterRegistry::instance()->add(KisFilterSP(new KisFXAAFilter()));
 }
 
-KritaAntiAlias::~KritaAntiAlias()
+KritaAntiAliasFilter::~KritaAntiAliasFilter()
 {
 }
 
-KisFilterFXAA::KisFilterFXAA() : KisColorTransformationFilter(id(), FiltersCategoryInDevelopmentId, i18n("&AntiAlias"))
+KisFXAAFilter::KisFXAAFilter(): KisFilter(id(), FiltersCategoryEdgeDetectionId, i18n("&Edge Detection..."))
 {
     setColorSpaceIndependence(FULLY_INDEPENDENT);
     setSupportsPainting(false); // TODO: find out what this means
+    setSupportsAdjustmentLayers(true);
     setShowConfigurationWidget(false);
     setSupportsLevelOfDetail(false); // TODO: find out what this means
 }
 
-KoColorTransformation* KisFilterFXAA::createTransformation(const KoColorSpace* cs, const KisFilterConfigurationSP config) const
+void KisFXAAFilter::processImpl(KisPaintDeviceSP device, const QRect &rect, const KisFilterConfigurationSP config, KoUpdater *progressUpdater) const
 {
-    Q_UNUSED(config);
-    return cs->createInvertTransformation();
+    Q_ASSERT(device != 0);
+
+    // KisFilterConfigurationSP configuration = config ? config : new KisFilterConfiguration(id().id(), 1);
+
+    // KisLodTransformScalar t(device);
+
+    // QVariant value;
+    // configuration->getProperty("horizRadius", value);
+    // float horizontalRadius = t.scale(value.toFloat());
+    // configuration->getProperty("vertRadius", value);
+    // float verticalRadius = t.scale(value.toFloat());
+
+    // QBitArray channelFlags;
+    // if (configuration) {
+    //     channelFlags = configuration->channelFlags();
+    // }
+
+    // KisEdgeDetectionKernel::FilterType type = KisEdgeDetectionKernel::SobelVector;
+    // if (config->getString("type") == "prewitt") {
+    //     type = KisEdgeDetectionKernel::Prewit;
+    // } else if (config->getString("type") == "simple") {
+    //     type = KisEdgeDetectionKernel::Simple;
+    // }
+
+    // KisEdgeDetectionKernel::FilterOutput output = KisEdgeDetectionKernel::pythagorean;
+    // if (config->getString("output") == "xGrowth") {
+    //     output = KisEdgeDetectionKernel::xGrowth;
+    // } else if (config->getString("output") == "xFall") {
+    //     output = KisEdgeDetectionKernel::xFall;
+    // } else if (config->getString("output") == "yGrowth") {
+    //     output = KisEdgeDetectionKernel::yGrowth;
+    // } else if (config->getString("output") == "yFall") {
+    //     output = KisEdgeDetectionKernel::yFall;
+    // } else if (config->getString("output") == "radian") {
+    //     output = KisEdgeDetectionKernel::radian;
+    // }
+
+    // KisEdgeDetectionKernel::applyEdgeDetection(device,
+    //                                            rect,
+    //                                            horizontalRadius,
+    //                                            verticalRadius,
+    //                                            type,
+    //                                            channelFlags,
+    //                                            progressUpdater,
+    //                                            output,
+    //                                            config->getBool("transparency", false));
 }
 
-bool KisFilterFXAA::needsTransparentPixels(const KisFilterConfigurationSP config, const KoColorSpace *cs) const
+KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
 {
-    Q_UNUSED(config);
-    return cs->colorModelId() == AlphaColorModelID;
+    KisFilterConfigurationSP config = factoryConfiguration();
+    // TODO: add configuration options
+
+    return config;
+}
+
+KisConfigWidget *KisFXAAFilter::createConfigurationWidget(QWidget *parent, const KisPaintDeviceSP dev, bool) const
+{
+    Q_UNUSED(dev);
+    // return new KisWdgEdgeDetection(parent);
+}
+
+QRect KisFXAAFilter::neededRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
+{
+    KisLodTransformScalar t(lod);
+
+    QVariant value;
+    /**
+     * NOTE: integer division by two is done on purpose,
+     *       because the kernel size is always odd
+     */
+    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+
+    // return rect.adjusted(-halfWidth * 2, -halfHeight * 2, halfWidth * 2, halfHeight * 2);
+}
+
+QRect KisFXAAFilter::changedRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
+{
+    KisLodTransformScalar t(lod);
+
+    QVariant value;
+
+    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+
+    // return rect.adjusted( -halfWidth, -halfHeight, halfWidth, halfHeight);
 }
 
 #include "antialias.moc"

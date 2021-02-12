@@ -161,6 +161,7 @@ set(kritaimage_LIB_SRCS
    kis_convolution_painter.cc
    kis_gaussian_kernel.cpp
    kis_edge_detection_kernel.cpp
+   kis_fxaa_kernel.cpp
    kis_cubic_curve.cpp
    kis_default_bounds.cpp
    kis_default_bounds_node_wrapper.cpp
