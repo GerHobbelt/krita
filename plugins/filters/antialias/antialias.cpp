@@ -60,50 +60,24 @@ void KisFXAAFilter::processImpl(KisPaintDeviceSP device, const QRect &rect, cons
 {
     Q_ASSERT(device != 0);
 
-    // KisFilterConfigurationSP configuration = config ? config : new KisFilterConfiguration(id().id(), 1);
+    KisFilterConfigurationSP configuration = config ? config : new KisFilterConfiguration(id().id(), 1);
 
-    // KisLodTransformScalar t(device);
+    KisLodTransformScalar t(device);
 
-    // QVariant value;
-    // configuration->getProperty("horizRadius", value);
-    // float horizontalRadius = t.scale(value.toFloat());
-    // configuration->getProperty("vertRadius", value);
-    // float verticalRadius = t.scale(value.toFloat());
+    // TODO: add configuration options
 
-    // QBitArray channelFlags;
-    // if (configuration) {
-    //     channelFlags = configuration->channelFlags();
-    // }
+    QBitArray channelFlags;
+    if (configuration) {
+        channelFlags = configuration->channelFlags();
+    }
 
-    // KisEdgeDetectionKernel::FilterType type = KisEdgeDetectionKernel::SobelVector;
-    // if (config->getString("type") == "prewitt") {
-    //     type = KisEdgeDetectionKernel::Prewit;
-    // } else if (config->getString("type") == "simple") {
-    //     type = KisEdgeDetectionKernel::Simple;
-    // }
+    // TODO: make antialiasing type configurable?
 
-    // KisEdgeDetectionKernel::FilterOutput output = KisEdgeDetectionKernel::pythagorean;
-    // if (config->getString("output") == "xGrowth") {
-    //     output = KisEdgeDetectionKernel::xGrowth;
-    // } else if (config->getString("output") == "xFall") {
-    //     output = KisEdgeDetectionKernel::xFall;
-    // } else if (config->getString("output") == "yGrowth") {
-    //     output = KisEdgeDetectionKernel::yGrowth;
-    // } else if (config->getString("output") == "yFall") {
-    //     output = KisEdgeDetectionKernel::yFall;
-    // } else if (config->getString("output") == "radian") {
-    //     output = KisEdgeDetectionKernel::radian;
-    // }
-
-    // KisEdgeDetectionKernel::applyEdgeDetection(device,
-    //                                            rect,
-    //                                            horizontalRadius,
-    //                                            verticalRadius,
-    //                                            type,
-    //                                            channelFlags,
-    //                                            progressUpdater,
-    //                                            output,
-    //                                            config->getBool("transparency", false));
+    KisFXAAKernel::applyFXAA(device,
+                             rect,
+                             channelFlags,
+                             progressUpdater,
+                             config->getBool("transparency", false));
 }
 
 KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
@@ -114,11 +88,12 @@ KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
     return config;
 }
 
-KisConfigWidget *KisFXAAFilter::createConfigurationWidget(QWidget *parent, const KisPaintDeviceSP dev, bool) const
-{
-    Q_UNUSED(dev);
-    // return new KisWdgEdgeDetection(parent);
-}
+
+// KisConfigWidget *KisFXAAFilter::createConfigurationWidget(QWidget *parent, const KisPaintDeviceSP dev, bool) const
+// {
+//     Q_UNUSED(dev);
+//     // return new KisWdgFXAA(parent);
+// }
 
 QRect KisFXAAFilter::neededRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
 {
@@ -129,10 +104,11 @@ QRect KisFXAAFilter::neededRect(const QRect &rect, const KisFilterConfigurationS
      * NOTE: integer division by two is done on purpose,
      *       because the kernel size is always odd
      */
-    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
 
     // return rect.adjusted(-halfWidth * 2, -halfHeight * 2, halfWidth * 2, halfHeight * 2);
+    return rect;
 }
 
 QRect KisFXAAFilter::changedRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
@@ -141,10 +117,11 @@ QRect KisFXAAFilter::changedRect(const QRect &rect, const KisFilterConfiguration
 
     QVariant value;
 
-    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisEdgeDetectionKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
+    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
 
     // return rect.adjusted( -halfWidth, -halfHeight, halfWidth, halfHeight);
+    return rect;
 }
 
 #include "antialias.moc"
