@@ -39,14 +39,14 @@ public:
      * @param rect the affected rect.
      * @param channelFlags the affected channels.
      * @param progressUpdater the progress updater if it exists.
-     * @param writeToAlpha whether or not to have the result applied to the transparency than the color channels,
+     * @param searchRadius is the radius of the search for steps.
      * this is useful for fringe effects.
      */
     static void applyFXAA(KisPaintDeviceSP device,
                           const QRect& rect,
                           const QBitArray &channelFlags,
                           KoUpdater *progressUpdater,
-                          bool writeToAlpha = false);
+                          int searchRadius);
 };
 
 #endif // KIS_FXAA_KERNEL_H

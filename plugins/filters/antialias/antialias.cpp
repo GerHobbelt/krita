@@ -35,6 +35,8 @@
 #include <klocalizedstring.h>
 #include <filter/kis_filter_registry.h>
 
+#include "widgets/kis_multi_integer_filter_widget.h"
+
 K_PLUGIN_FACTORY_WITH_JSON(KritaAntiAliasFactory, "kritaantialias.json", registerPlugin<KritaAntiAliasFilter>();)
 
 KritaAntiAliasFilter::KritaAntiAliasFilter(QObject *parent, const QVariantList &)
@@ -47,7 +49,7 @@ KritaAntiAliasFilter::~KritaAntiAliasFilter()
 {
 }
 
-KisFXAAFilter::KisFXAAFilter(): KisFilter(id(), FiltersCategoryEdgeDetectionId, i18n("&Edge Detection..."))
+KisFXAAFilter::KisFXAAFilter(): KisFilter(id(), FiltersCategoryInDevelopmentId, i18n("&AntiAlias..."))
 {
     setColorSpaceIndependence(FULLY_INDEPENDENT);
     setSupportsPainting(false); // TODO: find out what this means
@@ -88,12 +90,14 @@ KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
     return config;
 }
 
-
-// KisConfigWidget *KisFXAAFilter::createConfigurationWidget(QWidget *parent, const KisPaintDeviceSP dev, bool) const
-// {
-//     Q_UNUSED(dev);
-//     // return new KisWdgFXAA(parent);
-// }
+KisConfigWidget * KisFXAAFilter::createConfigurationWidget(QWidget* parent, const KisPaintDeviceSP, bool) const
+{
+    vKisIntegerWidgetParam param;
+    param.push_back(KisIntegerWidgetParam(1, 16, 32, i18nc("radius to search for steps when antialiasing", "Search Radius"), "searchRadius"));
+    KisMultiIntegerFilterWidget * w = new KisMultiIntegerFilterWidget(id().id(),  parent,  id().id(),  param);
+    w->setConfiguration(defaultConfiguration());
+    return w;
+}
 
 QRect KisFXAAFilter::neededRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
 {

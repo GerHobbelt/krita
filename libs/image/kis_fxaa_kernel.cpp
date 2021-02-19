@@ -38,21 +38,7 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                               const QRect &rect,
                               const QBitArray &channelFlags,
                               KoUpdater *progressUpdater,
-                              bool writeToAlpha)
+                              int searchRadius)
 {
-    QPoint srcTopLeft = rect.topLeft();
-    KisPainter finalPainter(device);
-    finalPainter.setChannelFlags(channelFlags);
-    finalPainter.setProgress(progressUpdater);
-
-
-    QPoint srcTopLeft = rect.topLeft();
-
-    KisConvolutionPainter painter(device);
-    painter.setChannelFlags(channelFlags);
-    painter.setProgress(progressUpdater);
-
-    KisConvolutionKernelSP kernelHoriz = NULL;
-    painter.applyMatrix(kernelHoriz, device, srcTopLeft, srcTopLeft, rect.size(), BORDER_REPEAT);
 
 }
