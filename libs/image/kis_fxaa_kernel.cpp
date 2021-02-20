@@ -37,7 +37,7 @@
 
 
 
-#define FXAA_THRESHOLD 0.1
+#define FXAA_THRESHOLD 10
 
 
 struct pixelEdgeFlags
@@ -116,14 +116,15 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     }
 
     const quint32 pixelsOfInputArea = abs(needsRect.width() * needsRect.height());
-    QVector<int16_t> luma(pixelsOfInputArea, 0);
+    QVector<quint16> luma(pixelsOfInputArea, 0);
 
     // copy all of lumaFixedPD to luma
     quint32 nPixels = lumaFixedPD->allocatedPixels();
     KIS_ASSERT_RECOVER_RETURN(nPixels == pixelsOfInputArea);
-    for (quint32 curPixel = 0; curPixel > nPixels; curPixel++) {
+    for (quint32 curPixel = 0; curPixel < nPixels; curPixel++) {
         const quint8 *data = lumaFixedPD->constData() + (curPixel * lumaFixedPD->pixelSize());
         luma[curPixel] = toDoubleFuncPtr[greyIndex](data, lumaFixedPD->colorSpace()->channels()[greyIndex]->pos());
+        // qInfo() << "luma:" << luma[curPixel] << "(" << curPixel << "/" << nPixels << ")";
     }
     if (progressUpdater) progressUpdater->setProgress(20);
 
@@ -149,8 +150,10 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
             bool edgeAtRight = abs(luma[poscurr] - luma[posright]) > FXAA_THRESHOLD;
             bool edgeAtTop = abs(luma[poscurr] - luma[posup]) > FXAA_THRESHOLD;
+            // qInfo() << "Right: abs(" << luma[poscurr] << "-" << luma[posright] << ") =" << abs(luma[poscurr] - luma[posright]) << "; > " << FXAA_THRESHOLD << "=" << edgeAtRight;
+            // qInfo() << "Top: abs(" << luma[poscurr] << "-" << luma[posup] << ") =" << abs(luma[poscurr] - luma[posup]) << "; > " << FXAA_THRESHOLD << "=" << edgeAtTop;
 
-            edgeAtRight = true;
+            // edgeAtRight = true;
 
             edgeFlags[y][x] = pixelEdgeFlags{edgeAtRight, edgeAtTop};
         }
@@ -173,11 +176,11 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             b = 255;
         }
         if (r == 0 && b == 0) {
-            qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
-                       "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
-                       "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtTop << ".";
+            // qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
+            //            "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
+            //            "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtTop << ".";
             // QThread::msleep(30);
-            g = 255;
+            // g = 255;
         }
         col.fromQColor(QColor(r, g, b, a));
         const int pixelSize = device->colorSpace()->pixelSize();
