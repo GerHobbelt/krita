@@ -66,8 +66,6 @@ void KisFXAAFilter::processImpl(KisPaintDeviceSP device, const QRect &rect, cons
 
     KisLodTransformScalar t(device);
 
-    // TODO: add configuration options
-
     QBitArray channelFlags;
     if (configuration) {
         channelFlags = configuration->channelFlags();
@@ -79,7 +77,7 @@ void KisFXAAFilter::processImpl(KisPaintDeviceSP device, const QRect &rect, cons
                              rect,
                              channelFlags,
                              progressUpdater,
-                             config->getBool("transparency", false));
+                             config->getInt("searchRadius", 12));
 }
 
 KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
@@ -99,33 +97,18 @@ KisConfigWidget * KisFXAAFilter::createConfigurationWidget(QWidget* parent, cons
     return w;
 }
 
-QRect KisFXAAFilter::neededRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
+QRect KisFXAAFilter::neededRect(const QRect & rect, const KisFilterConfigurationSP _config, int lod) const
 {
-    KisLodTransformScalar t(lod);
+    const quint32 searchRadius = _config ? _config->getInt("searchRadius", 12) : 12;
 
-    QVariant value;
-    /**
-     * NOTE: integer division by two is done on purpose,
-     *       because the kernel size is always odd
-     */
-    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-
-    // return rect.adjusted(-halfWidth * 2, -halfHeight * 2, halfWidth * 2, halfHeight * 2);
-    return rect;
+    return rect.adjusted(-searchRadius * 2, -searchRadius * 2, searchRadius * 2, searchRadius * 2);
 }
 
-QRect KisFXAAFilter::changedRect(const QRect &rect, const KisFilterConfigurationSP _config, int lod) const
+QRect KisFXAAFilter::changedRect(const QRect & rect, const KisFilterConfigurationSP _config, int lod) const
 {
-    KisLodTransformScalar t(lod);
+    const quint32 searchRadius = _config ? _config->getInt("searchRadius", 12) : 12;
 
-    QVariant value;
-
-    // const int halfWidth = _config->getProperty("horizRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-    // const int halfHeight = _config->getProperty("vertRadius", value) ? KisFXAAKernel::kernelSizeFromRadius(t.scale(value.toFloat())) / 2 : 5;
-
-    // return rect.adjusted( -halfWidth, -halfHeight, halfWidth, halfHeight);
-    return rect;
+    return rect.adjusted( -searchRadius, -searchRadius, searchRadius, searchRadius);
 }
 
 #include "antialias.moc"

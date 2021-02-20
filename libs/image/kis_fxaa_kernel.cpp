@@ -37,7 +37,7 @@
 
 
 
-#define FXAA_THRESHOLD 10.0
+#define FXAA_THRESHOLD 0.1
 
 
 struct pixelEdgeFlags
@@ -65,8 +65,10 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
     const KoColorSpace* cs = device->colorSpace();
 
+    const QRect needsRect = rect.adjusted(-searchRadius, -searchRadius, searchRadius, searchRadius);
+
     KisFixedPaintDeviceSP lumaFixedPD = new KisFixedPaintDevice(cs);
-    lumaFixedPD->setRect(rect);
+    lumaFixedPD->setRect(needsRect);
     lumaFixedPD->lazyGrowBufferWithoutInitialization();
     device->readBytes(lumaFixedPD->data(), lumaFixedPD->bounds());
 
@@ -81,7 +83,7 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     QVector<pixelEdgeFlags> edgeFlagRowInit = QVector<pixelEdgeFlags>(lumaFixedPD->bounds().width(), pixelEdgeFlags{false,false});
     QVector<QVector<pixelEdgeFlags>> edgeFlags(lumaFixedPD->bounds().height(), edgeFlagRowInit);
 
-    // KisSequentialConstIteratorProgress lumaIt(lumaFixedPD, rect);
+    // KisSequentialConstIteratorProgress lumaIt(lumaFixedPD, needsRect);
     // while (lumaIt.nextPixel()) {
     //     calculateEdgeFlags(lumaFixedPD->colorSpace(), lumaIt.rawData(), edgeFlags, lumaIt.x(), lumaIt.y());
     // }
@@ -113,7 +115,7 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         return;
     }
 
-    const quint32 pixelsOfInputArea = abs(rect.width() * rect.height());
+    const quint32 pixelsOfInputArea = abs(needsRect.width() * needsRect.height());
     QVector<int16_t> luma(pixelsOfInputArea, 0);
 
     // copy all of lumaFixedPD to luma
@@ -125,28 +127,30 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     }
     if (progressUpdater) progressUpdater->setProgress(20);
 
-    const int tileHeightMinus1 = rect.height() - 1;
-    const int tileWidthMinus1 = rect.width() - 1;
+    const int tileHeightMinus1 = needsRect.height() - 1;
+    const int tileWidthMinus1 = needsRect.width() - 1;
 
     qInfo() << "got here";
 
     for (int y = 0; y < tileHeightMinus1; y++) {
         for (int x = 0; x < tileWidthMinus1; x++) {
-            int poscurr = y * rect.width() + x;
-            int posup = (y + 1) * rect.width() + x;
-            int posright = y * rect.width() + x + 1;
+            int poscurr = y * needsRect.width() + x;
+            int posup = (y + 1) * needsRect.width() + x;
+            int posright = y * needsRect.width() + x + 1;
 
             // indexing array of length 111616 with values poscurr 218 posup 730 and posright 219
             // at position 218 , 0 out of 511 , 217 
-            // with rect QRect(512,1536 512x218) and edge flags rect QRect(512,1536 512x218)
+            // with needsRect QRect(512,1536 512x218) and edge flags needsRect QRect(512,1536 512x218)
             // qInfo() << "indexing array of length" << luma.length() << "with values poscurr" << poscurr << "posup" << posup << "and posright" << posright <<
             //     "at position" << x << "," << y << "out of" << tileWidthMinus1 << "," << tileHeightMinus1 <<
-            //     "with rect" << rect << "and edge flags rect" << lumaFixedPD->bounds();
+            //     "with needsRect" << needsRect << "and edge flags needsRect" << lumaFixedPD->bounds();
             // QThread::msleep(30);
             
 
             bool edgeAtRight = abs(luma[poscurr] - luma[posright]) > FXAA_THRESHOLD;
             bool edgeAtTop = abs(luma[poscurr] - luma[posup]) > FXAA_THRESHOLD;
+
+            edgeAtRight = true;
 
             edgeFlags[y][x] = pixelEdgeFlags{edgeAtRight, edgeAtTop};
         }
@@ -155,24 +159,31 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     qInfo() << "finished calculating edgeFlags";
 
     KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
-    for (auto row : edgeFlags) {
-        for (auto flags : row) {
-            KoColor col(device->colorSpace());
-            int r, g, b, a;
-            r = g = b = 0;
-            a = 255;
-            if (flags.edgeAtRight) {
-                r = 255;
-            }
-            if (flags.edgeAtTop) {
-                b = 255;
-            }
-            col.fromQColor(QColor(r, g, b, a));
-            const int pixelSize = device->colorSpace()->pixelSize();
-            memcpy(finalIt.rawData(), col.data(), pixelSize);
-            finalIt.nextPixel();
+    do {
+        KoColor col(device->colorSpace());
+        int r, g, b, a;
+        r = g = b = 0;
+        a = 255;
+        int needsRect_x = finalIt.x() - rect.x() + searchRadius;
+        int needsRect_y = finalIt.y() - rect.y() + searchRadius;
+        if (edgeFlags[needsRect_y][needsRect_x].edgeAtRight) {
+            r = 255;
         }
-    }
+        if (edgeFlags[needsRect_y][needsRect_x].edgeAtTop) {
+            b = 255;
+        }
+        if (r == 0 && b == 0) {
+            qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
+                       "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
+                       "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtTop << ".";
+            // QThread::msleep(30);
+            g = 255;
+        }
+        col.fromQColor(QColor(r, g, b, a));
+        const int pixelSize = device->colorSpace()->pixelSize();
+        memcpy(finalIt.rawData(), col.data(), pixelSize);
+            
+    } while (finalIt.nextPixel());
 }
 
 void calculateLuma(const KoColorSpace* cs, quint8* src, quint8* dst, qint32 nPixels) {
