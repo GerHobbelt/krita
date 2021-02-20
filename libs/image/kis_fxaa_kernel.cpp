@@ -28,6 +28,8 @@
 #include <kis_fixed_paint_device.h>
 #include <KisSequentialIteratorProgress.h>
 
+#define FXAA_THRESHOLD 10.0
+
 
 struct pixelEdgeFlags
 {
@@ -43,6 +45,8 @@ KisFXAAKernel::KisFXAAKernel()
  * TODO: comment
  */
 
+void calculateLuma(const KoColorSpace* cs, quint8* src, quint8* dst, qint32 nPixels);
+
 void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                               const QRect &rect,
                               const QBitArray &channelFlags,
@@ -52,47 +56,58 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
     const KoColorSpace* cs = device->colorSpace();
 
-    KisFixedPaintDevice luma(cs);
-    luma.setRect(rect);
-    luma.lazyGrowBufferWithoutInitialization();
-    device->readBytes(luma.data(), luma.bounds());
+    KisFixedPaintDeviceSP luma = new KisFixedPaintDevice(cs);
+    luma->setRect(rect);
+    luma->lazyGrowBufferWithoutInitialization();
+    device->readBytes(luma->data(), luma->bounds());
 
     qInfo() << "applying AA filter";
-    calculateLuma(cs, luma.data(), luma.data(), luma.allocatedPixels());
+    calculateLuma(cs, luma->data(), luma->data(), luma->allocatedPixels());
 
     // DEBUG: write luma to the luma
-    // dst->writeBytes(luma.data(), luma.bounds());
+    // dst->writeBytes(luma->data(), luma->bounds());
 
-    luma.convertTo(KoColorSpaceRegistry::instance()->graya16("Gray-D50-elle-V4-srgbtrc.icc"));
+    luma->convertTo(KoColorSpaceRegistry::instance()->graya16("Gray-D50-elle-V4-srgbtrc.icc"));
 
-    QVector<pixelEdgeFlags> edgeFlagRowInit = QVector<pixelEdgeFlags>(luma.bounds().width(), pixelEdgeFlags{false,false});
-    QVector<QVector<pixelEdgeFlags>> edgeFlags(luma.bounds().height(), edgeFlagRowInit);
+    QVector<pixelEdgeFlags> edgeFlagRowInit = QVector<pixelEdgeFlags>(luma->bounds().width(), pixelEdgeFlags{false,false});
+    QVector<QVector<pixelEdgeFlags>> edgeFlags(luma->bounds().height(), edgeFlagRowInit);
 
     // KisSequentialConstIteratorProgress lumaIt(luma, rect);
     // while (lumaIt.nextPixel()) {
-    //     calculateEdgeFlags(luma.colorSpace(), lumaIt.rawData(), edgeFlags, lumaIt.x(), lumaIt.y());
+    //     calculateEdgeFlags(luma->colorSpace(), lumaIt.rawData(), edgeFlags, lumaIt.x(), lumaIt.y());
     // }
-
-    const int tileHeightMinus1 = rect.height() - 1;
-    const int tileWidthMinus1 = rect.width() - 1;
 
     // Foreach INNER pixel in tile
 
     QRect rectTopLeft = rectTopLeft.adjusted(0, 0, -1, -1);
     QRect rectTopRight = rectTopLeft.translated(1, 0);
     QRect rectBottomLeft = rectTopLeft.translated(0, 1);
-    KisSequentialConstIteratorProgress topLeftIt(luma, rectTopLeft);
-    KisSequentialConstIteratorProgress topRightIt(luma, rectTopRight);
-    KisSequentialConstIteratorProgress bottomLeftIt(luma, rectBottomLeft);
-    while 
-            double pos = y * rect.width() + x;
-            double posdown = (y - 1) * rect.width() + x;
-            double posright = y * rect.width() + x + 1;
+    KisSequentialConstIteratorProgress topLeftIt(luma, rectTopLeft, progressUpdater);
+    KisSequentialConstIterator topRightIt(luma, rectTopRight);
+    KisSequentialConstIterator bottomLeftIt(luma, rectBottomLeft);
+    while (topLeftIt.nextPixel() && topRightIt.nextPixel() && bottomLeftIt.nextPixel()) {
+        bool edgeAtRight = abs(topLeftIt.oldRawData() - topRightIt.oldRawData()) > FXAA_THRESHOLD;
+        bool edgeAtBottom = abs(topLeftIt.oldRawData() - bottomLeftIt.oldRawData()) > FXAA_THRESHOLD;
 
-            bool edgeAtRight = abs(luma[pos] - luma[posright]) > FXAA_THRESHOLD;
-            bool edgeAtBottom = abs(luma[pos] - luma[posdown]) > FXAA_THRESHOLD;
+        edgeFlags[topLeftIt.x()][topLeftIt.y()] = pixelEdgeFlags{edgeAtRight, edgeAtBottom};
+    }
 
-            edgeFlags[x][y] = pixelEdgeFlags{edgeAtRight, edgeAtBottom};
+    KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
+    for (auto row : edgeFlags) {
+        for (auto flags : row) {
+            KoColor col(device->colorSpace());
+            col.fromQColor(QColor());
+            int r, g, b, a;
+            r = g = b = a = 0;
+            if (flags.edgeAtRight) {
+                r = 255;
+            }
+            if (flags.edgeAtBottom) {
+                b = 255;
+            }
+            const int pixelSize = device->colorSpace()->pixelSize();
+            memcpy(finalIt.rawData(), col.data(), pixelSize);
+            finalIt.nextPixel();
         }
     }
 }
