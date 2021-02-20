@@ -43,7 +43,7 @@
 struct pixelEdgeFlags
 {
     bool edgeAtRight;
-    bool edgeAtTop;
+    bool edgeAtBottom;
 };
 
 KisFXAAKernel::KisFXAAKernel()
@@ -136,31 +136,32 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     for (int y = 0; y < tileHeightMinus1; y++) {
         for (int x = 0; x < tileWidthMinus1; x++) {
             int poscurr = y * needsRect.width() + x;
-            int posup = (y + 1) * needsRect.width() + x;
+            int posdown = (y + 1) * needsRect.width() + x;
             int posright = y * needsRect.width() + x + 1;
 
-            // indexing array of length 111616 with values poscurr 218 posup 730 and posright 219
+            // indexing array of length 111616 with values poscurr 218 posdown 730 and posright 219
             // at position 218 , 0 out of 511 , 217 
             // with needsRect QRect(512,1536 512x218) and edge flags needsRect QRect(512,1536 512x218)
-            // qInfo() << "indexing array of length" << luma.length() << "with values poscurr" << poscurr << "posup" << posup << "and posright" << posright <<
+            // qInfo() << "indexing array of length" << luma.length() << "with values poscurr" << poscurr << "posdown" << posdown << "and posright" << posright <<
             //     "at position" << x << "," << y << "out of" << tileWidthMinus1 << "," << tileHeightMinus1 <<
             //     "with needsRect" << needsRect << "and edge flags needsRect" << lumaFixedPD->bounds();
             // QThread::msleep(30);
             
 
             bool edgeAtRight = abs(luma[poscurr] - luma[posright]) > FXAA_THRESHOLD;
-            bool edgeAtTop = abs(luma[poscurr] - luma[posup]) > FXAA_THRESHOLD;
+            bool edgeAtBottom = abs(luma[poscurr] - luma[posdown]) > FXAA_THRESHOLD;
             // qInfo() << "Right: abs(" << luma[poscurr] << "-" << luma[posright] << ") =" << abs(luma[poscurr] - luma[posright]) << "; > " << FXAA_THRESHOLD << "=" << edgeAtRight;
-            // qInfo() << "Top: abs(" << luma[poscurr] << "-" << luma[posup] << ") =" << abs(luma[poscurr] - luma[posup]) << "; > " << FXAA_THRESHOLD << "=" << edgeAtTop;
+            // qInfo() << "Top: abs(" << luma[poscurr] << "-" << luma[posdown] << ") =" << abs(luma[poscurr] - luma[posdown]) << "; > " << FXAA_THRESHOLD << "=" << edgeAtBottom;
 
             // edgeAtRight = true;
 
-            edgeFlags[y][x] = pixelEdgeFlags{edgeAtRight, edgeAtTop};
+            edgeFlags[y][x] = pixelEdgeFlags{edgeAtRight, edgeAtBottom};
         }
     }
 
     qInfo() << "finished calculating edgeFlags";
 
+    // Preview edge flags
     KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
     do {
         KoColor col(device->colorSpace());
@@ -172,13 +173,13 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         if (edgeFlags[needsRect_y][needsRect_x].edgeAtRight) {
             r = 255;
         }
-        if (edgeFlags[needsRect_y][needsRect_x].edgeAtTop) {
+        if (edgeFlags[needsRect_y][needsRect_x].edgeAtBottom) {
             b = 255;
         }
         if (r == 0 && b == 0) {
             // qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
             //            "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
-            //            "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtTop << ".";
+            //            "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtBottom << ".";
             // QThread::msleep(30);
             // g = 255;
         }
