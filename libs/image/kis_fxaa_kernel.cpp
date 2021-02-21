@@ -64,10 +64,12 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                               KoUpdater *progressUpdater,
                               int searchRadius)
 {
+    int needsRectMarginNeg = searchRadius + 2;
+    int needsRectMarginPos = searchRadius + 2;
 
     const KoColorSpace* cs = device->colorSpace();
 
-    const QRect needsRect = rect.adjusted(-searchRadius-1, -searchRadius-1, searchRadius, searchRadius);
+    const QRect needsRect = rect.adjusted(-needsRectMarginNeg, -needsRectMarginNeg, needsRectMarginPos, needsRectMarginPos);
 
     KisFixedPaintDeviceSP lumaFixedPD = new KisFixedPaintDevice(cs);
     lumaFixedPD->setRect(needsRect);
@@ -132,8 +134,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
     qInfo() << "got here";
 
-    for (int y = 2; y < needsRect.height()-1; y++) {
-        for (int x = 2; x < needsRect.width()-1; x++) {
+    for (int y = 2; y < needsRect.height()-2; y++) {
+        for (int x = 2; x < needsRect.width()-2; x++) {
             // int poscurr = y * needsRect.width() + x;
             // int postop = (y - 1) * needsRect.width() + x;
             // int posleft = y * needsRect.width() + x - 1;
@@ -210,8 +212,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         int r, g, b, a;
         r = g = b = 0;
         a = 255;
-        int needsRect_x = finalIt.x() - rect.x() + searchRadius;
-        int needsRect_y = finalIt.y() - rect.y() + searchRadius;
+        int needsRect_x = finalIt.x() - rect.x() + needsRectMarginNeg;
+        int needsRect_y = finalIt.y() - rect.y() + needsRectMarginNeg;
         if (edgeFlags[needsRect_y][needsRect_x].edgeAtLeft) {
             r = 255;
         }

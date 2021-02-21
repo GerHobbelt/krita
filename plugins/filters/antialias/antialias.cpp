@@ -101,14 +101,14 @@ QRect KisFXAAFilter::neededRect(const QRect & rect, const KisFilterConfiguration
 {
     const quint32 searchRadius = _config ? _config->getInt("searchRadius", 12) : 12;
 
-    return rect.adjusted(-searchRadius * 2, -searchRadius * 2, searchRadius * 2, searchRadius * 2);
+    return rect.adjusted(-(searchRadius + 2) * 2, -(searchRadius + 2) * 2, (searchRadius + 2) * 2, (searchRadius + 2) * 2);
 }
 
 QRect KisFXAAFilter::changedRect(const QRect & rect, const KisFilterConfigurationSP _config, int lod) const
 {
     const quint32 searchRadius = _config ? _config->getInt("searchRadius", 12) : 12;
 
-    return rect.adjusted( -searchRadius, -searchRadius, searchRadius, searchRadius);
+    return rect.adjusted(-(searchRadius + 2), -(searchRadius + 2), searchRadius + 2, searchRadius + 2);
 }
 
 #include "antialias.moc"
