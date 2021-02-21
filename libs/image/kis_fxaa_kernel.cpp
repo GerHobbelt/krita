@@ -29,6 +29,7 @@
 #include <KisSequentialIteratorProgress.h>
 #include "kis_math_toolbox.h"
 #include <KoUpdater.h>
+#include "KoMixColorsOp.h"
 
 
 
@@ -161,33 +162,64 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
     qInfo() << "finished calculating edgeFlags";
 
-    // Preview edge flags
+    // // Preview edge flags
+    // KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
+    // do {
+    //     KoColor col(device->colorSpace());
+    //     int r, g, b, a;
+    //     r = g = b = 0;
+    //     a = 255;
+    //     int needsRect_x = finalIt.x() - rect.x() + searchRadius;
+    //     int needsRect_y = finalIt.y() - rect.y() + searchRadius;
+    //     if (edgeFlags[needsRect_y][needsRect_x].edgeAtRight) {
+    //         r = 255;
+    //     }
+    //     if (edgeFlags[needsRect_y][needsRect_x].edgeAtBottom) {
+    //         b = 255;
+    //     }
+    //     // g = finalIt.y() % 255;
+    //     // if (r == 0 && b == 0) {
+    //     //     // qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
+    //     //     //            "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
+    //     //     //            "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtBottom << ".";
+    //     //     // QThread::msleep(30);
+    //     //     // g = 255;
+    //     // }
+    //     col.fromQColor(QColor(r, g, b, a));
+    //     const int pixelSize = device->colorSpace()->pixelSize();
+    //     memcpy(finalIt.rawData(), col.data(), pixelSize);
+            
+    // } while (finalIt.nextPixel());
+
+    KisSequentialIterator leftIt(device, rect.translated(-1, 0));
+    KisSequentialIterator upIt(device, rect.translated(0, -1));
+    KisSequentialIterator rightIt(device, rect.translated(1, 0));
+    KisSequentialIterator downIt(device, rect.translated(0, 1));
     KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
     do {
-        KoColor col(device->colorSpace());
-        int r, g, b, a;
-        r = g = b = 0;
-        a = 255;
-        int needsRect_x = finalIt.x() - rect.x() + searchRadius;
-        int needsRect_y = finalIt.y() - rect.y() + searchRadius;
-        if (edgeFlags[needsRect_y][needsRect_x].edgeAtRight) {
-            r = 255;
-        }
-        if (edgeFlags[needsRect_y][needsRect_x].edgeAtBottom) {
-            b = 255;
-        }
-        if (r == 0 && b == 0) {
-            // qInfo() << "x:" << finalIt.x() << "-" << rect.x() << "+" << searchRadius << "=" << needsRect_x <<
-            //            "y:" << finalIt.y() << "-" << rect.y() << "+" << searchRadius << "=" << needsRect_y <<
-            //            "edgeFlags:" << edgeFlags[needsRect_y][needsRect_x].edgeAtRight << edgeFlags[needsRect_y][needsRect_x].edgeAtBottom << ".";
-            // QThread::msleep(30);
-            // g = 255;
-        }
-        col.fromQColor(QColor(r, g, b, a));
         const int pixelSize = device->colorSpace()->pixelSize();
-        memcpy(finalIt.rawData(), col.data(), pixelSize);
-            
-    } while (finalIt.nextPixel());
+
+        const QVector<const quint8*> pixels = {
+            finalIt.oldRawData(),
+            leftIt.oldRawData(),
+            upIt.oldRawData(),
+            downIt.oldRawData(),
+            rightIt.oldRawData()
+        };
+
+        KoColor final(device->colorSpace());
+        const quint8 **cpixels = const_cast<const quint8**>(pixels.constData());
+        device->colorSpace()->mixColorsOp()->mixColors(cpixels, pixels.size(), final.data());
+
+        memcpy(finalIt.rawData(), final.data(), pixelSize);
+
+    } while (
+        finalIt.nextPixel()
+        && leftIt.nextPixel()
+        && upIt.nextPixel()
+        && rightIt.nextPixel()
+        && downIt.nextPixel()
+    );
 }
 
 void calculateLuma(const KoColorSpace* cs, quint8* src, quint8* dst, qint32 nPixels) {
