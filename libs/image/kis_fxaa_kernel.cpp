@@ -62,7 +62,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                               const QRect &rect,
                               const QBitArray &channelFlags,
                               KoUpdater *progressUpdater,
-                              int searchRadius)
+                              int searchRadius,
+                              bool adjustForLocalContrast)
 {
     int needsRectMarginNeg = searchRadius + 2;
     int needsRectMarginPos = searchRadius + 2;
@@ -175,6 +176,12 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
             // Then discard if there is no edge:
             if (!edges.edgeAtLeft && !edges.edgeAtTop) {
+                continue;
+            }
+
+            // If we're not adjusting for local contrast, write and continue
+            if (!adjustForLocalContrast) {
+                edgeFlags[y][x] = edges;
                 continue;
             }
 

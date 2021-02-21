@@ -77,7 +77,8 @@ void KisFXAAFilter::processImpl(KisPaintDeviceSP device, const QRect &rect, cons
                              rect,
                              channelFlags,
                              progressUpdater,
-                             config->getInt("searchRadius", 12));
+                             config->getInt("searchRadius", 12),
+                             config->getInt("adjustForLocalContrast", 1) == 1);
 }
 
 KisFilterConfigurationSP KisFXAAFilter::defaultConfiguration() const
@@ -92,6 +93,7 @@ KisConfigWidget * KisFXAAFilter::createConfigurationWidget(QWidget* parent, cons
 {
     vKisIntegerWidgetParam param;
     param.push_back(KisIntegerWidgetParam(1, 16, 32, i18nc("radius to search for steps when antialiasing", "Search Radius"), "searchRadius"));
+    param.push_back(KisIntegerWidgetParam(0, 1, 1, i18nc("whether to take local contrast into account when finding edges", "Adjust for Local Contrast"), "adjustForLocalContrast"));
     KisMultiIntegerFilterWidget * w = new KisMultiIntegerFilterWidget(id().id(),  parent,  id().id(),  param);
     w->setConfiguration(defaultConfiguration());
     return w;

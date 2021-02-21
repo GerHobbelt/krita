@@ -46,7 +46,8 @@ public:
                           const QRect& rect,
                           const QBitArray &channelFlags,
                           KoUpdater *progressUpdater,
-                          int searchRadius);
+                          int searchRadius,
+                          bool adjustForLocalContrast);
 };
 
 #endif // KIS_FXAA_KERNEL_H
