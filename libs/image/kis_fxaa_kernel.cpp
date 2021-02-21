@@ -197,8 +197,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
             // Local contrast adaptation:
             edges = pixelEdgeFlags{
-                edgeAtLeft: maxDelta < SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * deltaLeft,
-                edgeAtTop: maxDelta < SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * deltaTop,
+                edgeAtLeft: edges.edgeAtLeft && maxDelta < SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * deltaLeft,
+                edgeAtTop: edges.edgeAtTop && maxDelta < SMAA_LOCAL_CONTRAST_ADAPTATION_FACTOR * deltaTop,
             };
 
             edgeFlags[y][x] = edges;
