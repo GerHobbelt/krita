@@ -190,6 +190,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             float deltaLeftLeft = abs(L - LLeftLeft);
             float deltaTopTop = abs(L - LTopTop);
 
+            // TODO: Incorporate left-bottom, left-top, top-left and top-right deltas
+
             // Calculate the maximum delta:
             float maxDelta = std::max({deltaLeft, deltaTop, deltaRight, deltaBottom, deltaLeftLeft, deltaTopTop});
 
