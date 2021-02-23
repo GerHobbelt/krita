@@ -48,6 +48,24 @@ struct pixelEdgeFlags
     bool edgeAtTop;
 };
 
+struct blendFactorData
+{
+    float left;
+    float top;
+    float right;
+    float bottom;
+
+};
+
+bool operator==(const blendFactorData& lhs, const blendFactorData& rhs)
+{
+    return 
+        lhs.left == rhs.left &&
+        lhs.top == rhs.top &&
+        lhs.right == rhs.right &&
+        lhs.bottom == rhs.bottom;
+}
+
 KisFXAAKernel::KisFXAAKernel()
 {
 
@@ -243,6 +261,22 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             
     // } while (finalIt.nextPixel());
 
+    QVector<blendFactorData> blendFactorsInit = QVector<blendFactorData>(rect.width(), blendFactorData{});
+    QVector<QVector<blendFactorData>> blendFactors(rect.height(), blendFactorsInit);
+
+    for (int y = 0; y < rect.height(); y++) {
+        for (int x = 0; x < rect.width(); x++) {
+            int nrPosX = x - rect.x() + needsRectMarginNeg;
+            int nrPosY = y - rect.y() + needsRectMarginNeg;
+            blendFactorData blends = {};
+
+            // TODO: calculate blend factors
+
+            blendFactors[y][x] = blends;
+        }
+    }
+
+
     KisSequentialIterator leftIt(device, rect.translated(-1, 0));
     KisSequentialIterator upIt(device, rect.translated(0, -1));
     KisSequentialIterator rightIt(device, rect.translated(1, 0));
@@ -251,20 +285,61 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     do {
         const int pixelSize = device->colorSpace()->pixelSize();
 
-        const QVector<const quint8*> pixels = {
-            finalIt.oldRawData(),
-            leftIt.oldRawData(),
-            upIt.oldRawData(),
-            downIt.oldRawData(),
-            rightIt.oldRawData()
-        };
+        blendFactorData factors = blendFactors[finalIt.y()][finalIt.x()]; // bottom and left
+
+        // load top and right from pixel above and to the right respectively
+        if (upIt.y() >= 0) {
+            factors.top = blendFactors[upIt.y()][upIt.x()].top;
+        } else {
+            factors.top = 0;
+        }
+        if (leftIt.x() >= 0) {
+            factors.left = blendFactors[leftIt.y()][leftIt.x()].left;
+        } else {
+            factors.left = 0;
+        }
+
+        if (factors == blendFactorData{}) {
+            memcpy(finalIt.rawData(), finalIt.oldRawData(), pixelSize);
+            continue;
+        }
+
+        bool horizontal = factors.left + factors.right > factors.top + factors.bottom;
+
+        const quint8* pixels[3];
+
+        float chosenFactors[2] = {};
+        if (horizontal) {
+            pixels[0] = leftIt.oldRawData();
+            chosenFactors[0] = factors.left;
+            pixels[1] = rightIt.oldRawData();
+            chosenFactors[1] = factors.right;
+        } else {
+            pixels[0] = upIt.oldRawData();
+            chosenFactors[0] = factors.top;
+            pixels[1] = downIt.oldRawData();
+            chosenFactors[1] = factors.bottom;
+        }
+        pixels[2] = finalIt.oldRawData();
+
+        qint16 weights[3];
+        {
+            // blend center with neighbours (e.g. a, b) by factors (e.g. fa, fb)
+            // weight the blending according to the magnitude of the factors
+            // ((center * (1 - fa) + a * fa) * (fa/(fb+fa))) + ((center * (1 - fb) + b * fb) * (fb/(fb+fa)))
+            // => [wolfram alpha says] (center * (-fa^2 + fa - fb^2 + fb) + a * fa^2 + b * fb^2)/(fa + fb)
+            // we can ignore the common divisor as it'll be handled by sumOfWeights
+            float fa = chosenFactors[0];
+            float fb = chosenFactors[1];
+            weights[0] = pow(fa, 2) * 255;
+            weights[1] = pow(fb, 2) * 255;
+            weights[2] = (-pow(fa, 2) + fa - pow(fb, 2) + fb) * 255;
+        }
+        int sumOfWeights = weights[0] + weights[1] + weights[2];
 
         KoColor final(device->colorSpace());
-        const quint8 **cpixels = const_cast<const quint8**>(pixels.constData());
-        device->colorSpace()->mixColorsOp()->mixColors(cpixels, pixels.size(), final.data());
-
+        device->colorSpace()->mixColorsOp()->mixColors(pixels, weights, 3, final.data(), sumOfWeights);
         memcpy(finalIt.rawData(), final.data(), pixelSize);
-
     } while (
         finalIt.nextPixel()
         && leftIt.nextPixel()
