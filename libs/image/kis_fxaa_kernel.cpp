@@ -66,6 +66,65 @@ bool operator==(const blendFactorData& lhs, const blendFactorData& rhs)
         lhs.bottom == rhs.bottom;
 }
 
+typedef enum {
+    Near,
+    Far,
+    None,
+} edgeSide;
+
+edgeSide operator-(const edgeSide& in) {
+    if (in == Near) {
+        return Far;
+    }
+    if (in == Far) {
+        return Near;
+    }
+    return None;
+};
+
+struct edgeShape {
+    edgeSide sides[2];
+    int edgeDistances[2];
+
+    void calculateCoverage(float &nearCoverage, float &farCoverage) const {
+        float distances[2] = {
+            edgeDistances[0] + 0.5f,
+            edgeDistances[1] + 0.5f
+        };
+        float total = distances[0] + distances[1];
+        nearCoverage = 0.0;
+        farCoverage = 0.0;
+        for (int i = 0; i < 2; i++) {
+            edgeSide side = sides[i];
+            if (side == None) {
+                continue;
+            }
+            float center = distances[i] + total / 2.0;
+            if (center < -0.5) {
+                // this triangle ends before it reaches this pixel
+                continue;
+            }
+            float coverage = 0.0;
+            if (center <= 0.5) {
+                float coverageBase = center + 0.5;
+                // height at the pixel edge that is intersecting the triangle
+                float coverageHeight = ((distances[i] - 0.5) / center) * 0.5;
+                coverage = coverageBase * coverageHeight * 0.5;
+            } else {
+                float heightA = (1 - (distances[i] - 0.5) / center) * 0.5;
+                float heightB = (1 - (distances[i] + 0.5) / center) * 0.5;
+                coverage = (heightA + heightB) * 0.5;
+            }
+            if (side == Near) {
+                nearCoverage += coverage;
+            } else if (side == Far) {
+                farCoverage += coverage;
+            }
+        }
+    };
+};
+
+
 KisFXAAKernel::KisFXAAKernel()
 {
 
@@ -268,9 +327,95 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         for (int x = 0; x < rect.width(); x++) {
             int nrPosX = x - rect.x() + needsRectMarginNeg;
             int nrPosY = y - rect.y() + needsRectMarginNeg;
-            blendFactorData blends = {};
 
-            // TODO: calculate blend factors
+            blendFactorData blends = {};
+            
+            if (edgeFlags[nrPosY][nrPosX].edgeAtTop) {
+                int edgeLengthLeft = 1;
+                while (edgeLengthLeft < searchRadius) {
+                    pixelEdgeFlags flags = edgeFlags[nrPosY][nrPosX-edgeLengthLeft];
+                    if (!flags.edgeAtTop) {
+                        break;
+                    }
+                    edgeLengthLeft++;
+                }
+
+                int edgeLengthRight = 1;
+                while (edgeLengthRight < searchRadius) {
+                    pixelEdgeFlags flags = edgeFlags[nrPosY][nrPosX+edgeLengthRight];
+                    if (!flags.edgeAtTop) {
+                        break;
+                    }
+                    edgeLengthRight++;
+                }
+
+                // step back a pixel to the last one with an edge
+                edgeLengthLeft--;
+                edgeLengthRight--;
+
+                struct edgeShapeFlags {
+                    bool above;
+                    bool in_line;
+                };
+
+                edgeShapeFlags edgesLeft = {
+                    above: edgeFlags[nrPosY-1][nrPosX-edgeLengthLeft].edgeAtLeft,
+                    in_line: edgeFlags[nrPosY][nrPosX-edgeLengthLeft].edgeAtLeft,
+                };
+                edgeShapeFlags edgesRight = {
+                    above: edgeFlags[nrPosY-1][nrPosX-edgeLengthRight+1].edgeAtLeft,
+                    in_line: edgeFlags[nrPosY][nrPosX-edgeLengthRight+1].edgeAtLeft,
+                };
+
+                edgeSide edgeSideLeft = None;
+                edgeSide edgeSideRight = None;
+                if (edgesLeft.above ^ edgesLeft.in_line) {
+                    edgeSideLeft = edgesLeft.above ? Far : Near;
+                }
+                if (edgesRight.above ^ edgesRight.in_line) {
+                    edgeSideRight = edgesRight.above ? Far : Near;
+                }
+                if (edgeSideLeft == None) {
+                    edgeSideLeft = -edgeSideLeft;
+                }
+                if (edgeSideRight == None) {
+                    edgeSideRight = -edgeSideRight;
+                }
+
+                edgeShape shape = {
+                    sides: {edgeSideLeft, edgeSideRight},
+                    edgeDistances: {edgeLengthLeft, edgeLengthRight},
+                };
+                float nearCoverage;
+                float farCoverage;
+                shape.calculateCoverage(nearCoverage, farCoverage);
+                blends.top = nearCoverage;
+                blends.bottom = farCoverage;
+            }
+
+            // if (edgeFlags[nrPosY][nrPosX].edgeAtLeft) {
+            //     int edgeLengthUp = 1;
+            //     while (edgeLengthUp < searchRadius) {
+            //         pixelEdgeFlags flags = edgeFlags[nrPosY-edgeLengthUp][nrPosX];
+            //         if (!flags.edgeAtLeft) {
+            //             break;
+            //         }
+            //         edgeLengthUp++;
+            //     }
+
+            //     int edgeLengthDown = 1;
+            //     while (edgeLengthDown < searchRadius) {
+            //         pixelEdgeFlags flags = edgeFlags[nrPosY+edgeLengthDown][nrPosX];
+            //         if (!flags.edgeAtLeft) {
+            //             break;
+            //         }
+            //         edgeLengthDown++;
+            //     }
+
+            //     // step back a pixel to the last one with an edge
+            //     edgeLengthUp--;
+            //     edgeLengthDown--;
+            // }
 
             blendFactors[y][x] = blends;
         }
@@ -287,16 +432,17 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
         blendFactorData factors = blendFactors[finalIt.y()][finalIt.x()]; // bottom and left
 
-        // load top and right from pixel above and to the right respectively
+        // load bottom and right from pixel above and to the left respectively
+        // TODO: expand the blends by 1 so this always works -- or maybe wrap?
         if (upIt.y() >= 0) {
-            factors.top = blendFactors[upIt.y()][upIt.x()].top;
+            factors.bottom = blendFactors[upIt.y()][upIt.x()].bottom;
         } else {
-            factors.top = 0;
+            factors.bottom = 0;
         }
         if (leftIt.x() >= 0) {
-            factors.left = blendFactors[leftIt.y()][leftIt.x()].left;
+            factors.right = blendFactors[leftIt.y()][leftIt.x()].right;
         } else {
-            factors.left = 0;
+            factors.right = 0;
         }
 
         if (factors == blendFactorData{}) {
