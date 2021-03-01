@@ -332,9 +332,9 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         for (int x = 0; x < rect.width(); x++) {
             int nrPosX = x + needsRectMarginNeg;
             int nrPosY = y + needsRectMarginNeg;
-            qInfo() << "calculating blendFactors for x" << x << "y" << y <<
-                "nrPosX" << nrPosX << "nrPosY" << nrPosY <<
-                "out of needsRect" << needsRect << ", rect" << rect;
+            // qInfo() << "calculating blendFactors for x" << x << "y" << y <<
+            //     "nrPosX" << nrPosX << "nrPosY" << nrPosY <<
+            //     "out of needsRect" << needsRect << ", rect" << rect;
 
 
             blendFactorData blends = {};
@@ -437,6 +437,8 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             //     edgeLengthUp--;
             //     edgeLengthDown--;
             // }
+
+            // blends = {left: 0.0, top: 0.0, right: 0.0, bottom: 0.5};
 
             blendFactors[y][x] = blends;
         }
