@@ -88,32 +88,37 @@ struct edgeShape {
 
     void calculateCoverage(float &nearCoverage, float &farCoverage) const {
         float distances[2] = {
-            edgeDistances[0] + 0.5f,
-            edgeDistances[1] + 0.5f
+            edgeDistances[0] + 0.5f, //= 0.5
+            edgeDistances[1] + 0.5f //= 1.5
         };
-        float total = distances[0] + distances[1];
+        float total = distances[0] + distances[1]; //= 2.0
         nearCoverage = 0.0;
         farCoverage = 0.0;
         for (int i = 0; i < 2; i++) {
-            edgeSide side = sides[i];
+            edgeSide side = sides[i]; //= Near
             if (side == None) {
                 continue;
             }
-            float center = distances[i] + total / 2.0;
-            if (center < -0.5) {
+            float center = total / 2.0 - distances[i]; //= 2.0 / 2.0 - 0.5 = 0.5
+            if (center <= -0.5) {
                 // this triangle ends before it reaches this pixel
                 continue;
             }
             float coverage = 0.0;
             if (center <= 0.5) {
-                float coverageBase = center + 0.5;
+                float coverageBase = center + 0.5; //= 1.0
                 // height at the pixel edge that is intersecting the triangle
-                float coverageHeight = ((distances[i] - 0.5) / center) * 0.5;
+                float coverageHeight = coverageBase / (distances[i] + center) * 0.5; //= 1.0 / (0.5 + 0.5) * 0.5
                 coverage = coverageBase * coverageHeight * 0.5;
             } else {
-                float heightA = (1 - (distances[i] - 0.5) / center) * 0.5;
-                float heightB = (1 - (distances[i] + 0.5) / center) * 0.5;
-                coverage = (heightA + heightB) * 0.5;
+                // float heightA = (1 - (distances[i] - 0.5) / center) * 0.5;
+                // float heightB = (1 - (distances[i] + 0.5) / center) * 0.5;
+                float baseAtA = center + 0.5; //= 
+                float baseAtB = center - 0.5; //= 
+                // height at the pixel edge that is intersecting the triangle
+                float heightAtA = (baseAtA / (distances[i] + center)) * 0.5; //= 
+                float heightAtB = (baseAtB / (distances[i] + center)) * 0.5; //= 
+                coverage = (heightAtA + heightAtB) * 0.5;
             }
             if (side == Near) {
                 nearCoverage += coverage;
@@ -325,61 +330,71 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
     for (int y = 0; y < rect.height(); y++) {
         for (int x = 0; x < rect.width(); x++) {
-            int nrPosX = x - rect.x() + needsRectMarginNeg;
-            int nrPosY = y - rect.y() + needsRectMarginNeg;
+            int nrPosX = x + needsRectMarginNeg;
+            int nrPosY = y + needsRectMarginNeg;
+            qInfo() << "calculating blendFactors for x" << x << "y" << y <<
+                "nrPosX" << nrPosX << "nrPosY" << nrPosY <<
+                "out of needsRect" << needsRect << ", rect" << rect;
+
 
             blendFactorData blends = {};
             
             if (edgeFlags[nrPosY][nrPosX].edgeAtTop) {
-                int edgeLengthLeft = 1;
-                while (edgeLengthLeft < searchRadius) {
+                int edgeLengthLeft = 0;
+                while (++edgeLengthLeft < searchRadius) {
                     pixelEdgeFlags flags = edgeFlags[nrPosY][nrPosX-edgeLengthLeft];
-                    if (!flags.edgeAtTop) {
+                    if (!flags.edgeAtTop || flags.edgeAtLeft) {
+                        if (flags.edgeAtTop) {
+                            // include the top edge before the left edge
+                            edgeLengthLeft++;
+                        }
                         break;
                     }
-                    edgeLengthLeft++;
                 }
 
-                int edgeLengthRight = 1;
-                while (edgeLengthRight < searchRadius) {
+                int edgeLengthRight = 0;
+                while (++edgeLengthRight < searchRadius) {
                     pixelEdgeFlags flags = edgeFlags[nrPosY][nrPosX+edgeLengthRight];
-                    if (!flags.edgeAtTop) {
+                    if (!flags.edgeAtTop || flags.edgeAtLeft) {
                         break;
                     }
-                    edgeLengthRight++;
                 }
 
                 // step back a pixel to the last one with an edge
                 edgeLengthLeft--;
                 edgeLengthRight--;
+                Q_ASSERT(edgeLengthLeft >= 0);
+                Q_ASSERT(edgeLengthRight >= 0);
 
                 struct edgeShapeFlags {
                     bool above;
                     bool in_line;
                 };
 
+                Q_ASSERT(nrPosY > 0);
                 edgeShapeFlags edgesLeft = {
                     above: edgeFlags[nrPosY-1][nrPosX-edgeLengthLeft].edgeAtLeft,
                     in_line: edgeFlags[nrPosY][nrPosX-edgeLengthLeft].edgeAtLeft,
                 };
                 edgeShapeFlags edgesRight = {
-                    above: edgeFlags[nrPosY-1][nrPosX-edgeLengthRight+1].edgeAtLeft,
-                    in_line: edgeFlags[nrPosY][nrPosX-edgeLengthRight+1].edgeAtLeft,
+                    above: edgeFlags[nrPosY-1][nrPosX+edgeLengthRight+1].edgeAtLeft,
+                    in_line: edgeFlags[nrPosY][nrPosX+edgeLengthRight+1].edgeAtLeft,
                 };
 
                 edgeSide edgeSideLeft = None;
                 edgeSide edgeSideRight = None;
                 if (edgesLeft.above ^ edgesLeft.in_line) {
                     edgeSideLeft = edgesLeft.above ? Far : Near;
+                    // qInfo() << "set edge to" << (edgeSideLeft == Near ? "Near" : "Far") << "due to above" << edgesLeft.above << "and in_line" << edgesLeft.in_line;
                 }
                 if (edgesRight.above ^ edgesRight.in_line) {
                     edgeSideRight = edgesRight.above ? Far : Near;
                 }
                 if (edgeSideLeft == None) {
-                    edgeSideLeft = -edgeSideLeft;
+                    edgeSideLeft = -edgeSideRight;
                 }
                 if (edgeSideRight == None) {
-                    edgeSideRight = -edgeSideRight;
+                    edgeSideRight = -edgeSideLeft;
                 }
 
                 edgeShape shape = {
@@ -389,6 +404,12 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                 float nearCoverage;
                 float farCoverage;
                 shape.calculateCoverage(nearCoverage, farCoverage);
+                QString leftSideString = edgeSideLeft == None ? "None" : (edgeSideLeft == Near ? "Near" : "Far");
+                QString rightSideString = edgeSideRight == None ? "None" : (edgeSideRight == Near ? "Near" : "Far");
+                qInfo() << "coverage:" << nearCoverage << farCoverage << "from" <<
+                    leftSideString << "(" << edgesLeft.above << edgesLeft.in_line << ")" << edgeLengthLeft <<
+                    "," <<
+                    rightSideString << "(" << edgesRight.above << edgesRight.in_line << ")" << edgeLengthRight;
                 blends.top = nearCoverage;
                 blends.bottom = farCoverage;
             }
@@ -421,6 +442,90 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
         }
     }
 
+    qInfo() << "finished calculating blendFactors";
+
+    // KisSequentialIterator leftIt(device, rect.translated(-1, 0));
+    // KisSequentialIterator upIt(device, rect.translated(0, -1));
+    // KisSequentialIterator rightIt(device, rect.translated(1, 0));
+    // KisSequentialIterator downIt(device, rect.translated(0, 1));
+    // KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
+    // do {
+    //     // needsRect base indices
+    //     int nrPosX = finalIt.x() - rect.x() + needsRectMarginNeg;
+    //     int nrPosY = finalIt.y() - rect.y() + needsRectMarginNeg;
+
+    //     blendFactorData factors = blendFactors[finalIt.y()][finalIt.x()]; // bottom and left
+
+    //     // load bottom and right from pixel above and to the left respectively
+    //     // TODO: expand the blends by 1 so this always works -- or maybe wrap?
+    //     if (downIt.y() >= 0 && downIt.y() < blendFactors.length()) {
+    //         factors.bottom = blendFactors[downIt.y()][downIt.x()].bottom;
+    //     } else {
+    //         factors.bottom = 0;
+    //     }
+    //     if (rightIt.x() >= 0 && rightIt.x() < blendFactors[0].length()) {
+    //         factors.right = blendFactors[rightIt.y()][rightIt.x()].right;
+    //     } else {
+    //         factors.right = 0;
+    //     }
+
+    //     KoColor final(device->colorSpace());
+
+    //     int r, g, b, a;
+    //     r = g = b = 0;
+    //     a = 255;
+    //     // r = edgeLengthRight * 255/searchRadius;
+    //     // g = edgeLengthLeft * 255/searchRadius;
+    //     // r = edgeLengthUp * 255/searchRadius;
+    //     // g = edgeLengthDown * 255/searchRadius;
+    //     bool haveEdges = false;
+    //     if (factors.top > 0.0){
+    //         r = factors.top * 255;
+    //         haveEdges = true;
+    //     } else {
+    //         // r = 127;
+    //     }
+    //     if (factors.bottom > 0.0){
+    //         g = factors.bottom * 255;
+    //         haveEdges = true;
+    //     } else {
+    //         // g = 127;
+    //     }
+    //     if (!haveEdges) {
+    //         b = 255;
+    //     }
+    //     final.fromQColor(QColor(r, g, b, a));
+
+    //     // device->exactBoundsAmortized();
+
+    //     // int weightSum = 16384;
+    //     // qint16 weights[5] = {};
+
+    //     // TODO: calculate weights
+
+    //     // weights[0] = weightSum - (weights[1] + weights[2] + weights[3] + weights[4]);
+
+    //     // const QVector<const quint8*> pixels = {
+    //     //     finalIt.oldRawData(),
+    //     //     leftIt.oldRawData(),
+    //     //     upIt.oldRawData(),
+    //     //     downIt.oldRawData(),
+    //     //     rightIt.oldRawData()
+    //     // };
+
+    //     // const quint8 **cpixels = const_cast<const quint8**>(pixels.constData());
+    //     // device->colorSpace()->mixColorsOp()->mixColors(cpixels, weights, pixels.size(), final.data(), weightSum);
+
+    //     const int pixelSize = device->colorSpace()->pixelSize();
+    //     memcpy(finalIt.rawData(), final.data(), pixelSize);
+
+    // } while (
+    //     finalIt.nextPixel()
+    //     && leftIt.nextPixel()
+    //     && upIt.nextPixel()
+    //     && rightIt.nextPixel()
+    //     && downIt.nextPixel()
+    // );
 
     KisSequentialIterator leftIt(device, rect.translated(-1, 0));
     KisSequentialIterator upIt(device, rect.translated(0, -1));
@@ -434,13 +539,13 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
 
         // load bottom and right from pixel above and to the left respectively
         // TODO: expand the blends by 1 so this always works -- or maybe wrap?
-        if (upIt.y() >= 0) {
-            factors.bottom = blendFactors[upIt.y()][upIt.x()].bottom;
+        if (downIt.y() >= 0 && downIt.y() < blendFactors.length()) {
+            factors.bottom = blendFactors[downIt.y()][downIt.x()].bottom;
         } else {
             factors.bottom = 0;
         }
-        if (leftIt.x() >= 0) {
-            factors.right = blendFactors[leftIt.y()][leftIt.x()].right;
+        if (rightIt.x() >= 0 && rightIt.x() < blendFactors[0].length()) {
+            factors.right = blendFactors[rightIt.y()][rightIt.x()].right;
         } else {
             factors.right = 0;
         }
