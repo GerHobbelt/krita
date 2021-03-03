@@ -406,12 +406,86 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                 shape.calculateCoverage(nearCoverage, farCoverage);
                 QString leftSideString = edgeSideLeft == None ? "None" : (edgeSideLeft == Near ? "Near" : "Far");
                 QString rightSideString = edgeSideRight == None ? "None" : (edgeSideRight == Near ? "Near" : "Far");
-                qInfo() << "coverage:" << nearCoverage << farCoverage << "from" <<
+                qInfo() << "coverage V:" << nearCoverage << farCoverage << "from" <<
                     leftSideString << "(" << edgesLeft.above << edgesLeft.in_line << ")" << edgeLengthLeft <<
                     "," <<
                     rightSideString << "(" << edgesRight.above << edgesRight.in_line << ")" << edgeLengthRight;
                 blends.top = nearCoverage;
                 blends.bottom = farCoverage;
+            }
+
+            if (edgeFlags[nrPosY][nrPosX].edgeAtLeft) {
+                int edgeLengthTop = 0;
+                while (++edgeLengthTop < searchRadius) {
+                    pixelEdgeFlags flags = edgeFlags[nrPosY-edgeLengthTop][nrPosX];
+                    if (!flags.edgeAtLeft || flags.edgeAtTop) {
+                        if (flags.edgeAtLeft) {
+                            // include the left edge before the top edge
+                            edgeLengthTop++;
+                        }
+                        break;
+                    }
+                }
+
+                int edgeLengthBottom = 0;
+                while (++edgeLengthBottom < searchRadius) {
+                    pixelEdgeFlags flags = edgeFlags[nrPosY+edgeLengthBottom][nrPosX];
+                    if (!flags.edgeAtLeft || flags.edgeAtTop) {
+                        break;
+                    }
+                }
+
+                // step back a pixel to the last one with an edge
+                edgeLengthTop--;
+                edgeLengthBottom--;
+                Q_ASSERT(edgeLengthTop >= 0);
+                Q_ASSERT(edgeLengthBottom >= 0);
+
+                struct edgeShapeFlags {
+                    bool left;
+                    bool in_line;
+                };
+
+                Q_ASSERT(nrPosY > 0);
+                edgeShapeFlags edgesTop = {
+                    left: edgeFlags[nrPosY-edgeLengthTop][nrPosX-1].edgeAtTop,
+                    in_line: edgeFlags[nrPosY-edgeLengthTop][nrPosX].edgeAtTop,
+                };
+                edgeShapeFlags edgesBottom = {
+                    left: edgeFlags[nrPosY+edgeLengthBottom+1][nrPosX-1].edgeAtTop,
+                    in_line: edgeFlags[nrPosY+edgeLengthBottom+1][nrPosX].edgeAtTop,
+                };
+
+                edgeSide edgeSideTop = None;
+                edgeSide edgeSideBottom = None;
+                if (edgesTop.left ^ edgesTop.in_line) {
+                    edgeSideTop = edgesTop.left ? Far : Near;
+                }
+                if (edgesBottom.left ^ edgesBottom.in_line) {
+                    edgeSideBottom = edgesBottom.left ? Far : Near;
+                }
+                if (edgeSideTop == None) {
+                    edgeSideTop = -edgeSideBottom;
+                }
+                if (edgeSideBottom == None) {
+                    edgeSideBottom = -edgeSideTop;
+                }
+
+                edgeShape shape = {
+                    sides: {edgeSideTop, edgeSideBottom},
+                    edgeDistances: {edgeLengthTop, edgeLengthBottom},
+                };
+                float nearCoverage;
+                float farCoverage;
+                shape.calculateCoverage(nearCoverage, farCoverage);
+                QString topSideString = edgeSideTop == None ? "None" : (edgeSideTop == Near ? "Near" : "Far");
+                QString bottomSideString = edgeSideBottom == None ? "None" : (edgeSideBottom == Near ? "Near" : "Far");
+                qInfo() << "coverage H:" << nearCoverage << farCoverage << "from" <<
+                    topSideString << "(" << edgesTop.left << edgesTop.in_line << ")" << edgeLengthTop <<
+                    "," <<
+                    bottomSideString << "(" << edgesBottom.left << edgesBottom.in_line << ")" << edgeLengthBottom;
+                blends.left = nearCoverage;
+                blends.right = farCoverage;
             }
 
             // if (edgeFlags[nrPosY][nrPosX].edgeAtLeft) {
