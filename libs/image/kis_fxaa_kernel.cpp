@@ -325,20 +325,21 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             
     // } while (finalIt.nextPixel());
 
-    QVector<blendFactorData> blendFactorsInit = QVector<blendFactorData>(rect.width(), blendFactorData{});
-    QVector<QVector<blendFactorData>> blendFactors(rect.height(), blendFactorsInit);
+    const int width = rect.width();
+    const int height = rect.height();
 
-    for (int y = 0; y < rect.height(); y++) {
-        for (int x = 0; x < rect.width(); x++) {
+    // oversize by 1 so bottom/right can be stored in y+1 and x+1 respectively
+    QVector<blendFactorData> blendFactorsInit = QVector<blendFactorData>(width+1, blendFactorData{});
+    QVector<QVector<blendFactorData>> blendFactors(height+1, blendFactorsInit);
+
+    for (int y = 0; y < height+1; y++) {
+        for (int x = 0; x < width+1; x++) {
             int nrPosX = x + needsRectMarginNeg;
             int nrPosY = y + needsRectMarginNeg;
             // qInfo() << "calculating blendFactors for x" << x << "y" << y <<
             //     "nrPosX" << nrPosX << "nrPosY" << nrPosY <<
             //     "out of needsRect" << needsRect << ", rect" << rect;
 
-
-            blendFactorData blends = {};
-            
             if (edgeFlags[nrPosY][nrPosX].edgeAtTop) {
                 int edgeLengthLeft = 0;
                 while (++edgeLengthLeft < searchRadius) {
@@ -406,12 +407,15 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                 shape.calculateCoverage(nearCoverage, farCoverage);
                 QString leftSideString = edgeSideLeft == None ? "None" : (edgeSideLeft == Near ? "Near" : "Far");
                 QString rightSideString = edgeSideRight == None ? "None" : (edgeSideRight == Near ? "Near" : "Far");
-                qInfo() << "coverage V:" << nearCoverage << farCoverage << "from" <<
-                    leftSideString << "(" << edgesLeft.above << edgesLeft.in_line << ")" << edgeLengthLeft <<
-                    "," <<
-                    rightSideString << "(" << edgesRight.above << edgesRight.in_line << ")" << edgeLengthRight;
-                blends.top = nearCoverage;
-                blends.bottom = farCoverage;
+                // qInfo() << "coverage V:" << nearCoverage << farCoverage << "from" <<
+                //     leftSideString << "(" << edgesLeft.above << edgesLeft.in_line << ")" << edgeLengthLeft <<
+                //     "," <<
+                //     rightSideString << "(" << edgesRight.above << edgesRight.in_line << ")" << edgeLengthRight;
+                blendFactors[y][x].top = nearCoverage;
+                if (y > 0) {
+                    // store bottom factor in pixel on other side of top edge
+                    blendFactors[y-1][x].bottom = farCoverage;
+                }
             }
 
             if (edgeFlags[nrPosY][nrPosX].edgeAtLeft) {
@@ -480,12 +484,15 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
                 shape.calculateCoverage(nearCoverage, farCoverage);
                 QString topSideString = edgeSideTop == None ? "None" : (edgeSideTop == Near ? "Near" : "Far");
                 QString bottomSideString = edgeSideBottom == None ? "None" : (edgeSideBottom == Near ? "Near" : "Far");
-                qInfo() << "coverage H:" << nearCoverage << farCoverage << "from" <<
-                    topSideString << "(" << edgesTop.left << edgesTop.in_line << ")" << edgeLengthTop <<
-                    "," <<
-                    bottomSideString << "(" << edgesBottom.left << edgesBottom.in_line << ")" << edgeLengthBottom;
-                blends.left = nearCoverage;
-                blends.right = farCoverage;
+                // qInfo() << "coverage H:" << nearCoverage << farCoverage << "from" <<
+                //     topSideString << "(" << edgesTop.left << edgesTop.in_line << ")" << edgeLengthTop <<
+                //     "," <<
+                //     bottomSideString << "(" << edgesBottom.left << edgesBottom.in_line << ")" << edgeLengthBottom;
+                blendFactors[y][x].left = nearCoverage;
+                if (x > 0) {
+                    // store right factor in pixel on other side of left edge
+                    blendFactors[y][x-1].right = farCoverage;
+                }
             }
 
             // if (edgeFlags[nrPosY][nrPosX].edgeAtLeft) {
@@ -513,8 +520,6 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             // }
 
             // blends = {left: 0.0, top: 0.0, right: 0.0, bottom: 0.5};
-
-            blendFactors[y][x] = blends;
         }
     }
 
@@ -555,14 +560,14 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     //     // r = edgeLengthUp * 255/searchRadius;
     //     // g = edgeLengthDown * 255/searchRadius;
     //     bool haveEdges = false;
-    //     if (factors.top > 0.0){
-    //         r = factors.top * 255;
+    //     if (factors.left > 0.0){
+    //         r = factors.left * 255;
     //         haveEdges = true;
     //     } else {
     //         // r = 127;
     //     }
-    //     if (factors.bottom > 0.0){
-    //         g = factors.bottom * 255;
+    //     if (factors.right > 0.0){
+    //         g = factors.right * 255;
     //         haveEdges = true;
     //     } else {
     //         // g = 127;
@@ -610,21 +615,15 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
     KisSequentialIteratorProgress finalIt(device, rect, progressUpdater);
     do {
         const int pixelSize = device->colorSpace()->pixelSize();
+        const int x = finalIt.x() - rect.x();
+        const int y = finalIt.y() - rect.y();
 
-        blendFactorData factors = blendFactors[finalIt.y()][finalIt.x()]; // bottom and left
+        // qInfo() << "blending with finalIt x" << x << "y" << y <<
+        //     "and with rect" << rect;
 
-        // load bottom and right from pixel above and to the left respectively
-        // TODO: expand the blends by 1 so this always works -- or maybe wrap?
-        if (downIt.y() >= 0 && downIt.y() < blendFactors.length()) {
-            factors.bottom = blendFactors[downIt.y()][downIt.x()].bottom;
-        } else {
-            factors.bottom = 0;
-        }
-        if (rightIt.x() >= 0 && rightIt.x() < blendFactors[0].length()) {
-            factors.right = blendFactors[rightIt.y()][rightIt.x()].right;
-        } else {
-            factors.right = 0;
-        }
+        blendFactorData factors = blendFactors[y][x];
+        // qInfo() << "successfully fetched blending factors for x" << x << "y" << y <<
+        //     "and with rect" << rect;
 
         if (factors == blendFactorData{}) {
             memcpy(finalIt.rawData(), finalIt.oldRawData(), pixelSize);
