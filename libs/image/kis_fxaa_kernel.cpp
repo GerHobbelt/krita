@@ -654,12 +654,13 @@ void KisFXAAKernel::applyFXAA(KisPaintDeviceSP device,
             // weight the blending according to the magnitude of the factors
             // ((center * (1 - fa) + a * fa) * (fa/(fb+fa))) + ((center * (1 - fb) + b * fb) * (fb/(fb+fa)))
             // => [wolfram alpha says] (center * (-fa^2 + fa - fb^2 + fb) + a * fa^2 + b * fb^2)/(fa + fb)
-            // we can ignore the common divisor as it'll be handled by sumOfWeights
             float fa = chosenFactors[0];
             float fb = chosenFactors[1];
-            weights[0] = pow(fa, 2) * 255;
-            weights[1] = pow(fb, 2) * 255;
-            weights[2] = (-pow(fa, 2) + fa - pow(fb, 2) + fb) * 255;
+            // fa and fb are common, but if we don't divide by fa+fb,
+            // and fa and fb are very small, all weights can round to 0
+            weights[0] = (pow(fa, 2) / (fa + fb)) * 16384;
+            weights[1] = (pow(fb, 2) / (fa + fb)) * 16384;
+            weights[2] = ((-pow(fa, 2) + fa - pow(fb, 2) + fb) / (fa + fb)) * 16384;
         }
         int sumOfWeights = weights[0] + weights[1] + weights[2];
 
